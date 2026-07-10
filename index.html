@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<!-- 이지 메트로놈: 러닝용 네온 배경 + Web Audio 사운드 단일 HTML 앱 -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>이지 메트로놈</title>
+<style>
+  :root{
+    --neon1:#00f0ff; --neon2:#ff2fd6; --neon3:#7cff00;
+    --bg:#07070f; --panel:rgba(15,15,35,.55); --txt:#eafcff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    font-family:'Segoe UI',system-ui,sans-serif; color:var(--txt);
+    background:var(--bg); overflow-x:hidden; overflow-y:auto; user-select:none;
+  }
+  /* ===== 네온 러닝 배경 ===== */
+  .bg{position:fixed; inset:0; z-index:0; overflow:hidden;}
+  .blob{position:absolute; width:60vmax; height:60vmax; border-radius:50%;
+    filter:blur(90px); opacity:.35; mix-blend-mode:screen;}
+  .b1{background:var(--neon1); top:-20vmax; left:-15vmax; animation:drift1 14s ease-in-out infinite alternate;}
+  .b2{background:var(--neon2); bottom:-25vmax; right:-15vmax; animation:drift2 17s ease-in-out infinite alternate;}
+  .b3{background:#3040ff; top:30%; left:40%; width:45vmax; height:45vmax; animation:drift3 20s ease-in-out infinite alternate;}
+  @keyframes drift1{to{transform:translate(12vmax,10vmax) scale(1.15);}}
+  @keyframes drift2{to{transform:translate(-10vmax,-12vmax) scale(1.2);}}
+  @keyframes drift3{to{transform:translate(-14vmax,8vmax) scale(.85);}}
+  /* 달리는 속도선 */
+  .lines{position:absolute; inset:-50%; background:repeating-linear-gradient(
+      115deg, transparent 0 46px, rgba(0,240,255,.07) 46px 48px,
+      transparent 48px 110px, rgba(255,47,214,.06) 110px 112px);
+    animation:run 1.2s linear infinite;}
+  @keyframes run{to{transform:translate(-160px,0);}}
+  /* 비트 플래시 */
+  .flash{position:absolute; inset:0; background:radial-gradient(circle at 50% 42%, rgba(0,240,255,.28), transparent 60%);
+    opacity:0; transition:opacity .06s;}
+  .flash.on{opacity:1; transition:opacity 0s;}
+  .flash.accent{background:radial-gradient(circle at 50% 42%, rgba(255,47,214,.4), transparent 65%);}
+
+  /* ===== 레이아웃 ===== */
+  .wrap{position:relative; z-index:1; min-height:100%; max-width:520px; margin:0 auto;
+    display:flex; flex-direction:column; gap:8px; padding:8px 14px 14px;}
+  h1{font-size:.85rem; letter-spacing:.35em; text-align:center; font-weight:600;
+    color:var(--neon1); text-shadow:0 0 12px var(--neon1);}
+
+  /* BPM 표시 원 */
+  .bpmRing{position:relative; width:min(32vw,130px); aspect-ratio:1; margin:0 auto;
+    border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border:3px solid rgba(0,240,255,.5); box-shadow:0 0 18px rgba(0,240,255,.35), inset 0 0 24px rgba(0,240,255,.15);
+    transition:transform .09s, box-shadow .09s;}
+  .bpmRing.beat{transform:scale(1.06); box-shadow:0 0 34px var(--neon1), inset 0 0 30px rgba(0,240,255,.3);}
+  .bpmRing.accentBeat{border-color:var(--neon2); box-shadow:0 0 38px var(--neon2), inset 0 0 30px rgba(255,47,214,.3);}
+  #bpmVal{font-size:2.3rem; font-weight:700; line-height:1; text-shadow:0 0 14px var(--neon1);}
+  .bpmRing small{opacity:.7; letter-spacing:.3em; margin-top:2px;}
+
+  /* 비트 점 */
+  .dots{display:flex; flex-wrap:wrap; justify-content:center; gap:9px; min-height:20px;}
+  .dot{width:15px; height:15px; border-radius:50%; background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.25); transition:all .08s;}
+  .dot.on{background:var(--neon1); box-shadow:0 0 12px var(--neon1); transform:scale(1.3);}
+  .dot.first{border-color:var(--neon2);}
+  .dot.first.on{background:var(--neon2); box-shadow:0 0 14px var(--neon2);}
+
+  .panel{background:var(--panel); border:1px solid rgba(0,240,255,.18); border-radius:14px;
+    padding:8px 12px; backdrop-filter:blur(8px);}
+  .label{font-size:.68rem; letter-spacing:.25em; opacity:.75; margin-bottom:5px;}
+
+  /* BPM 컨트롤 */
+  .presets{display:flex; gap:8px; margin-bottom:8px;}
+  .preBtn{flex:1; padding:7px 0; font-size:1rem; font-weight:600; color:var(--txt);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.25); border-radius:10px; cursor:pointer;}
+  .preBtn.sel{background:rgba(0,240,255,.22); border-color:var(--neon1); box-shadow:0 0 10px rgba(0,240,255,.5);}
+  .bpmCtl{display:flex; align-items:center; gap:10px;}
+  .stepBtn{width:48px; height:40px; font-size:1.4rem; font-weight:700; color:var(--txt);
+    background:rgba(0,240,255,.1); border:1px solid rgba(0,240,255,.4); border-radius:12px; cursor:pointer;}
+  .stepBtn:active{background:rgba(0,240,255,.35);}
+  input[type=range]{flex:1; appearance:none; height:8px; border-radius:5px;
+    background:linear-gradient(90deg,var(--neon1),var(--neon2)); outline:none;}
+  input[type=range]::-webkit-slider-thumb{appearance:none; width:26px; height:26px; border-radius:50%;
+    background:#fff; box-shadow:0 0 12px var(--neon1); cursor:pointer;}
+
+  /* 박자/음표 선택 */
+  .row2{display:flex; gap:10px;}
+  .row2 .panel{flex:1;}
+  select{width:100%; padding:7px; font-size:1rem; color:var(--txt); background:#101028;
+    border:1px solid rgba(0,240,255,.4); border-radius:10px; text-align:center;}
+  .subs{display:flex; gap:8px;}
+  .subBtn{flex:1; padding:7px 0; font-size:1.05rem; color:var(--txt); background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.25); border-radius:10px; cursor:pointer;}
+  .subBtn.sel{background:rgba(255,47,214,.25); border-color:var(--neon2); box-shadow:0 0 10px rgba(255,47,214,.5);}
+  .subBtn span{display:block; font-size:.6rem; opacity:.7; margin-top:2px;}
+  #snds .subBtn{font-size:.78rem; padding:9px 0;}
+
+  /* 시작 버튼 */
+  #startBtn{margin-top:2px; padding:12px; font-size:1.15rem; font-weight:700; letter-spacing:.3em;
+    color:#031018; background:linear-gradient(90deg,var(--neon1),var(--neon3)); border:none; border-radius:16px;
+    box-shadow:0 0 22px rgba(0,240,255,.5); cursor:pointer;}
+  #startBtn.running{background:linear-gradient(90deg,var(--neon2),#ff7a00); color:#fff;
+    box-shadow:0 0 22px rgba(255,47,214,.55);}
+</style>
+</head>
+<body>
+<div class="bg">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="lines"></div>
+  <div class="flash" id="flash"></div>
+</div>
+
+<div class="wrap">
+  <h1>EASY METRONOME</h1>
+
+  <div class="bpmRing" id="ring">
+    <div id="bpmVal">160</div><small>BPM</small>
+  </div>
+  <div class="dots" id="dots"></div>
+
+  <div class="panel">
+    <div class="label">BPM (30–260)</div>
+    <div class="presets" id="presets">
+      <button class="preBtn sel" data-bpm="160">160</button>
+      <button class="preBtn" data-bpm="170">170</button>
+      <button class="preBtn" data-bpm="180">180</button>
+    </div>
+    <div class="bpmCtl">
+      <button class="stepBtn" id="minus">−</button>
+      <input type="range" id="slider" min="30" max="260" value="160">
+      <button class="stepBtn" id="plus">＋</button>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="panel">
+      <div class="label">박자</div>
+      <select id="tsig"></select>
+    </div>
+    <div class="panel">
+      <div class="label">음표 (박 분할)</div>
+      <div class="subs" id="subs">
+        <button class="subBtn sel" data-s="1">♩<span>기본</span></button>
+        <button class="subBtn" data-s="2">♫<span>2분할</span></button>
+        <button class="subBtn" data-s="3">♪³<span>셋잇단</span></button>
+        <button class="subBtn" data-s="4">♬♬<span>4분할</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="label">사운드</div>
+    <div class="subs" id="snds">
+      <button class="subBtn sel" data-snd="mech">메트로놈</button>
+      <button class="subBtn" data-snd="beep">비프</button>
+      <button class="subBtn" data-snd="step">스탭</button>
+      <button class="subBtn" data-snd="drum">드럼</button>
+      <button class="subBtn" data-snd="buk">북</button>
+    </div>
+  </div>
+
+  <button id="startBtn">START</button>
+</div>
+
+<script>
+// ---- 상태 ----
+let bpm = 160, beats = 4, denom = 4, subdiv = 1;
+let running = false, audio = null, timer = null;
+let nextTime = 0, tick = 0;           // tick = 현재 마디 내 분할 인덱스
+const queue = [];                     // 시각효과용 예약 큐
+let wakeLock = null;
+
+// ---- 박자 목록 (1/4 ~ 12/8) ----
+const tsel = document.getElementById('tsig');
+[4,8].forEach(d=>{
+  for(let n=1;n<=12;n++){
+    const o=document.createElement('option');
+    o.value=n+'/'+d; o.textContent=n+'/'+d;
+    tsel.appendChild(o);
+  }
+});
+tsel.value='4/4';
+
+// ---- 비트 점 렌더 ----
+const dotsEl = document.getElementById('dots');
+function buildDots(){
+  dotsEl.innerHTML='';
+  for(let i=0;i<beats;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i===0?' first':'');
+    dotsEl.appendChild(d);
+  }
+}
+buildDots();
+
+// ---- 사운드 엔진 (5종 합성음) ----
+let sound='mech';
+let noiseBuf=null; // 클릭/우드용 노이즈 버퍼 (최초 1회 생성)
+function getNoise(){
+  if(!noiseBuf){
+    noiseBuf=audio.createBuffer(1,audio.sampleRate*0.1,audio.sampleRate);
+    const ch=noiseBuf.getChannelData(0);
+    for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+  }
+  return noiseBuf;
+}
+function env(t,v,dur){ // 공용 게인 엔벨로프
+  const g=audio.createGain();
+  g.gain.setValueAtTime(v,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  g.connect(audio.destination);
+  return g;
+}
+// kind: 0=강박(1박째) 1=박 2=분할 → 강박은 높게, 분할은 작게
+function click(t, kind){
+  const v = kind===2?0.35:1;          // 볼륨
+  const p = kind===0?1.5 : kind===1?1 : 0.8; // 피치 배율
+  if(sound==='beep'){
+    const o=audio.createOscillator();
+    o.type='square'; o.frequency.value=1046*p;
+    o.connect(env(t,v,0.05)); o.start(t); o.stop(t+0.06);
+  }else if(sound==='mech'){ // 진짜 메트로놈: 중저음 나무 '톡' (노이즈+낮은 핑)
+    const s=audio.createBufferSource(); s.buffer=getNoise();
+    const f=audio.createBiquadFilter();
+    f.type='bandpass'; f.frequency.value=850*p; f.Q.value=2;
+    s.connect(f); f.connect(env(t,v*3,0.03));
+    s.start(t); s.stop(t+0.04);
+    const o=audio.createOscillator();
+    o.type='triangle'; o.frequency.value=620*p;
+    o.connect(env(t,v*0.8,0.035)); o.start(t); o.stop(t+0.05);
+  }else if(sound==='step'){ // 러닝 스탭: 낮은 쿵 + 지면 스침 노이즈
+    const o=audio.createOscillator();
+    o.type='sine';
+    o.frequency.setValueAtTime(120*p,t);
+    o.frequency.exponentialRampToValueAtTime(45,t+0.08);
+    o.connect(env(t,v*1.6,0.1)); o.start(t); o.stop(t+0.12);
+    const s=audio.createBufferSource(); s.buffer=getNoise();
+    const f=audio.createBiquadFilter();
+    f.type='lowpass'; f.frequency.value=900;
+    s.connect(f); f.connect(env(t,v*0.5,0.05));
+    s.start(t); s.stop(t+0.06);
+  }else if(sound==='buk'){ // 북: 깊고 울림 긴 막소리 + 타격 노이즈
+    const o=audio.createOscillator();
+    o.type='sine';
+    o.frequency.setValueAtTime(90*p,t);
+    o.frequency.exponentialRampToValueAtTime(55,t+0.25);
+    o.connect(env(t,v*1.8,0.3)); o.start(t); o.stop(t+0.32);
+    const s=audio.createBufferSource(); s.buffer=getNoise();
+    const f=audio.createBiquadFilter();
+    f.type='lowpass'; f.frequency.value=500;
+    s.connect(f); f.connect(env(t,v*0.7,0.04));
+    s.start(t); s.stop(t+0.05);
+  }else{ // 드럼(킥): 사인파 피치 드롭
+    const o=audio.createOscillator();
+    o.type='sine';
+    o.frequency.setValueAtTime(200*p,t);
+    o.frequency.exponentialRampToValueAtTime(50,t+0.09);
+    o.connect(env(t,v*1.5,0.12)); o.start(t); o.stop(t+0.14);
+  }
+}
+function scheduler(){
+  const perTick = 60/bpm/subdiv;   // BPM은 분모 음표(4분/8분) 기준
+  while(nextTime < audio.currentTime+0.12){
+    const beatIdx = Math.floor(tick/subdiv);
+    const kind = tick===0?0 : tick%subdiv===0?1:2;
+    click(nextTime, kind);
+    queue.push({time:nextTime, beatIdx, kind});
+    nextTime += perTick;
+    tick = (tick+1) % (beats*subdiv);
+  }
+}
+
+// ---- 시각 효과 루프 ----
+const ring=document.getElementById('ring'), flash=document.getElementById('flash');
+function draw(){
+  if(running){
+    while(queue.length && queue[0].time <= audio.currentTime){
+      const e=queue.shift();
+      if(e.kind<2){ // 박 단위만 반짝
+        [...dotsEl.children].forEach((d,i)=>d.classList.toggle('on', i===e.beatIdx));
+        ring.classList.add('beat'); ring.classList.toggle('accentBeat', e.kind===0);
+        flash.classList.add('on'); flash.classList.toggle('accent', e.kind===0);
+        setTimeout(()=>{ring.classList.remove('beat'); flash.classList.remove('on');},90);
+      }
+    }
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+// ---- 시작/정지 ----
+const startBtn=document.getElementById('startBtn');
+async function start(){
+  if(!audio) audio = new (window.AudioContext||window.webkitAudioContext)();
+  await audio.resume();
+  tick=0; queue.length=0; nextTime=audio.currentTime+0.08;
+  timer=setInterval(scheduler,25);
+  running=true; startBtn.textContent='STOP'; startBtn.classList.add('running');
+  try{ wakeLock = await navigator.wakeLock?.request('screen'); }catch(e){}
+}
+function stop(){
+  clearInterval(timer); running=false; queue.length=0;
+  startBtn.textContent='START'; startBtn.classList.remove('running');
+  [...dotsEl.children].forEach(d=>d.classList.remove('on'));
+  wakeLock?.release(); wakeLock=null;
+}
+startBtn.onclick=()=> running?stop():start();
+document.addEventListener('visibilitychange',()=>{ // 화면 복귀 시 wakeLock 재요청
+  if(document.visibilityState==='visible' && running)
+    navigator.wakeLock?.request('screen').then(w=>wakeLock=w).catch(()=>{});
+});
+
+// ---- BPM 컨트롤 ----
+const slider=document.getElementById('slider'), bpmVal=document.getElementById('bpmVal');
+function setBpm(v){
+  bpm=Math.min(260,Math.max(30,v));
+  slider.value=bpm; bpmVal.textContent=bpm;
+  document.querySelectorAll('.preBtn').forEach(b=>b.classList.toggle('sel',+b.dataset.bpm===bpm));
+}
+// 빨리가기 BPM 프리셋
+document.getElementById('presets').addEventListener('click',e=>{
+  const b=e.target.closest('.preBtn'); if(b) setBpm(+b.dataset.bpm);
+});
+slider.oninput=e=>setBpm(+e.target.value);
+// +/- 버튼: 짧게 누르면 ±1, 길게 누르면 연속 증감
+function holdBtn(id,step){
+  const b=document.getElementById(id); let iv,to;
+  const press=e=>{e.preventDefault(); setBpm(bpm+step);
+    to=setTimeout(()=>iv=setInterval(()=>setBpm(bpm+step),70),450);};
+  const rel=()=>{clearTimeout(to); clearInterval(iv);};
+  b.addEventListener('pointerdown',press);
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,rel));
+}
+holdBtn('minus',-1); holdBtn('plus',1);
+
+// ---- 박자/분할 선택 ----
+tsel.onchange=()=>{
+  const [n,d]=tsel.value.split('/').map(Number);
+  beats=n; denom=d; tick=0; buildDots();
+};
+document.getElementById('subs').addEventListener('click',e=>{
+  const b=e.target.closest('.subBtn'); if(!b) return;
+  document.querySelectorAll('#subs .subBtn').forEach(x=>x.classList.remove('sel'));
+  b.classList.add('sel'); subdiv=+b.dataset.s; tick=0;
+});
+
+// ---- 사운드 선택 (미리듣기 포함) ----
+document.getElementById('snds').addEventListener('click',e=>{
+  const b=e.target.closest('.subBtn'); if(!b) return;
+  document.querySelectorAll('#snds .subBtn').forEach(x=>x.classList.remove('sel'));
+  b.classList.add('sel'); sound=b.dataset.snd;
+  if(!running){ // 정지 상태면 한 번 미리듣기
+    if(!audio) audio=new (window.AudioContext||window.webkitAudioContext)();
+    audio.resume().then(()=>click(audio.currentTime+0.02,1));
+  }
+});
+</script>
+</body>
+</html>
