@@ -3,8 +3,17 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>이지 메트로놈</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#07070f">
+<link rel="icon" type="image/png" sizes="192x192" href="metronome-icon-192.png">
+<link rel="apple-touch-icon" href="metronome-icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="메트로놈">
 <style>
   :root{
     --neon1:#00f0ff; --neon2:#ff2fd6; --neon3:#7cff00;
@@ -351,6 +360,13 @@ document.getElementById('snds').addEventListener('click',e=>{
     audio.resume().then(()=>click(audio.currentTime+0.02,1));
   }
 });
+
+// ---- PWA: 서비스워커 등록 ----
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
