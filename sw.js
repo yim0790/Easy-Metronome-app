@@ -1,5 +1,5 @@
 // 이지 메트로놈 서비스워커: 오프라인 캐시로 PWA 설치/실행 지원
-const CACHE = 'easy-metronome-v1';
+const CACHE = 'easy-metronome-v2';
 const ASSETS = [
   './',
   './index.html',

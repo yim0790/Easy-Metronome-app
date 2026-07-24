@@ -120,20 +120,20 @@
   <h1>EASY METRONOME</h1>
 
   <div class="bpmRing" id="ring">
-    <div id="bpmVal">160</div><small>BPM</small>
+    <div id="bpmVal">180</div><small>BPM</small>
   </div>
   <div class="dots" id="dots"></div>
 
   <div class="panel">
     <div class="label">BPM (30–260)</div>
     <div class="presets" id="presets">
-      <button class="preBtn sel" data-bpm="160">160</button>
+      <button class="preBtn" data-bpm="160">160</button>
       <button class="preBtn" data-bpm="170">170</button>
-      <button class="preBtn" data-bpm="180">180</button>
+      <button class="preBtn sel" data-bpm="180">180</button>
     </div>
     <div class="bpmCtl">
       <button class="stepBtn" id="minus">−</button>
-      <input type="range" id="slider" min="30" max="260" value="160">
+      <input type="range" id="slider" min="30" max="260" value="180">
       <button class="stepBtn" id="plus">＋</button>
     </div>
   </div>
@@ -157,8 +157,8 @@
   <div class="panel">
     <div class="label">사운드</div>
     <div class="subs" id="snds">
-      <button class="subBtn sel" data-snd="mech">메트로놈</button>
-      <button class="subBtn" data-snd="beep">비프</button>
+      <button class="subBtn" data-snd="mech">메트로놈</button>
+      <button class="subBtn sel" data-snd="beep">비프</button>
       <button class="subBtn" data-snd="step">스탭</button>
       <button class="subBtn" data-snd="drum">드럼</button>
       <button class="subBtn" data-snd="buk">북</button>
@@ -170,7 +170,7 @@
 
 <script>
 // ---- 상태 ----
-let bpm = 160, beats = 4, denom = 4, subdiv = 1;
+let bpm = 180, beats = 2, denom = 4, subdiv = 1;
 let running = false, audio = null, timer = null;
 let nextTime = 0, tick = 0;           // tick = 현재 마디 내 분할 인덱스
 const queue = [];                     // 시각효과용 예약 큐
@@ -185,7 +185,7 @@ const tsel = document.getElementById('tsig');
     tsel.appendChild(o);
   }
 });
-tsel.value='4/4';
+tsel.value='2/4';
 
 // ---- 비트 점 렌더 ----
 const dotsEl = document.getElementById('dots');
@@ -200,7 +200,7 @@ function buildDots(){
 buildDots();
 
 // ---- 사운드 엔진 (5종 합성음) ----
-let sound='mech';
+let sound='beep';
 let noiseBuf=null; // 클릭/우드용 노이즈 버퍼 (최초 1회 생성)
 function getNoise(){
   if(!noiseBuf){
